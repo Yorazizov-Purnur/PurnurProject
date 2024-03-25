@@ -7,3 +7,12 @@ type SignUpStruct struct {
 	Login    string
 	Password string
 }
+
+type PostStruct struct {
+	Id          string `bson:"_id"`
+	Owner_id    string 
+	Title       string
+	Image       string
+	Description string
+	Like        int
+}
