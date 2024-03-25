@@ -68,7 +68,7 @@ func Login(c *gin.Context) {
 			http.SetCookie(c.Writer, &http.Cookie{
 				Name:     "media",
 				Value:    userdata.Id,
-				Expires:  time.Now().Add(60 * time.Second),
+				Expires:  time.Now().Add(1 * time.Hour),
 				Secure:   false,
 				SameSite: http.SameSiteLaxMode,
 				Path:     "/",
@@ -121,6 +121,7 @@ func CreateFunc(c *gin.Context) {
 			"title":       CreateTemp.Title,
 			"image":       img,
 			"description": CreateTemp.Description,
+			"like":        0,
 		})
 
 		if Error2 != nil {
@@ -186,10 +187,11 @@ func MyPost(c *gin.Context) {
 }
 
 func Like(c *gin.Context) {
-	var LikeTemp structs.PostStruct
+	var LikeTemp structs.LikeStruct
 	c.ShouldBindJSON(&LikeTemp)
+	fmt.Printf("LikeTemp: %v\n", LikeTemp)
 
-	CookieData, CookieError := c.Request.Cookie("RGCookie")
+	CookieData, CookieError := c.Request.Cookie("media")
 
 	if CookieError != nil {
 		fmt.Printf("CookieError: %v\n", CookieError)
@@ -197,31 +199,34 @@ func Like(c *gin.Context) {
 
 	if CookieData.Value != "" {
 		client, ctx := helpers.DBConnection()
-
-		connect := client.Database("SocialMedia").Collection("AllPost")
+		connect := client.Database("SocialMedia").Collection("AllPosts")
 
 		SingleResult := connect.FindOne(ctx, bson.M{
-			"owner_id": LikeTemp.Owner_id,
+			"_id": LikeTemp.Post_id,
 		})
 
-		var likedata structs.PostStruct
+		var likedata structs.LikeStruct
 		SingleResult.Decode(&likedata)
+		fmt.Printf("likedata: %v\n", likedata)
+		// +++++++++++++++++++++++++++++++++++++++++++++
 
+		client, ctx = helpers.DBConnection()
 		connection2 := client.Database("SocialMedia").Collection("Users")
 
 		SingleResult2 := connection2.FindOne(ctx, bson.M{
-			"_id": LikeTemp.Id,
+			"_id": LikeTemp.User_id,
 		})
 
-		var likedata2 structs.PostStruct
+		var likedata2 structs.LikeStruct
 		SingleResult2.Decode(&likedata2)
+		fmt.Printf("likedata2: %v\n", likedata2)
 
-		if likedata.Id == "" || likedata.Owner_id == "" || likedata2.Id == "" || likedata2.Owner_id == "" {
+		if likedata.Id == "" || likedata2.Id == "" {
 			c.JSON(404, "Error...empty field")
 		} else {
-			connect3 := client.Database("SocialMedia").Collection("AllPost")
-			connect3.UpdateOne(ctx, bson.M{
-				"like": 0,
+			connect3 := client.Database("SocialMedia").Collection("AllPosts")
+			res, err := connect3.UpdateOne(ctx, bson.M{
+				"_id": LikeTemp.Post_id,
 			},
 				bson.D{
 					{
@@ -230,6 +235,8 @@ func Like(c *gin.Context) {
 						},
 					},
 				})
+				fmt.Printf("res: %v\n", res)
+				fmt.Printf("err: %v\n", err)
 		}
 	}
 }
